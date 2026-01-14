@@ -276,17 +276,87 @@ lua/ghost/
 - Use the Haiku model (cheapest)
 - Limit to specific filetypes with `enabled_ft`
 
-### Conflicts with other completion plugins
+### Integration with nvim-cmp
 
-If using nvim-cmp or other completion plugins, you may need to adjust keymaps:
+Ghost.nvim's default `<Tab>` key conflicts with nvim-cmp. Here are two solutions:
+
+#### Option 1: Use Different Keys (Simple)
 
 ```lua
-require("ghost").setup({
-  keymap = {
-    accept = "<C-g>",  -- Use different key to avoid Tab conflicts
-  },
-})
+{
+  "abdul-hamid-achik/ghost.nvim",
+  dependencies = { "nvim-lua/plenary.nvim" },
+  event = "InsertEnter",
+  config = function()
+    require("ghost").setup({
+      keymap = {
+        accept = "<C-y>",           -- Accept full completion (traditional "yes")
+        accept_word = "<M-Right>",  -- Accept next word (Alt+Right)
+        accept_line = "<C-l>",      -- Accept current line
+        dismiss = "<C-]>",          -- Dismiss suggestion
+      },
+    })
+  end,
+}
 ```
+
+#### Option 2: Smart Tab (Best DX)
+
+Tab intelligently handles ghost.nvim, nvim-cmp, and LuaSnip:
+
+```lua
+{
+  "abdul-hamid-achik/ghost.nvim",
+  dependencies = { "nvim-lua/plenary.nvim" },
+  event = "InsertEnter",
+  config = function()
+    require("ghost").setup({
+      keymap = {
+        accept = "",  -- Disable default Tab, we'll handle it manually
+        accept_word = "<M-Right>",
+        accept_line = "<C-l>",
+        dismiss = "<C-]>",
+      },
+    })
+
+    -- Smart Tab: ghost.nvim → nvim-cmp → luasnip → fallback
+    vim.keymap.set("i", "<Tab>", function()
+      local ghost_render = require("ghost.render")
+      local cmp = require("cmp")
+      local luasnip = require("luasnip")
+
+      if ghost_render.has_completion() then
+        require("ghost.accept").accept()
+      elseif cmp.visible() then
+        cmp.select_next_item()
+      elseif luasnip.expand_or_locally_jumpable() then
+        luasnip.expand_or_jump()
+      else
+        vim.api.nvim_feedkeys(
+          vim.api.nvim_replace_termcodes("<Tab>", true, false, true), "n", false
+        )
+      end
+    end, { silent = true, desc = "Smart Tab" })
+
+    -- Also add Ctrl+Y as explicit accept (works even when cmp menu is open)
+    vim.keymap.set("i", "<C-y>", function()
+      if require("ghost.render").has_completion() then
+        require("ghost.accept").accept()
+      end
+    end, { silent = true, desc = "Accept ghost completion" })
+  end,
+}
+```
+
+#### Recommended Keymaps Summary
+
+| Key | Action | Notes |
+|-----|--------|-------|
+| `<Tab>` | Smart accept | Ghost → cmp → luasnip → indent |
+| `<C-y>` | Force accept ghost | Works even with cmp menu open |
+| `<M-Right>` | Accept word | Alt+Right, progressive |
+| `<C-l>` | Accept line | Line by line |
+| `<C-]>` | Dismiss | Close ghost suggestion |
 
 ## License
 
