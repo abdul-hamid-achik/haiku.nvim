@@ -1,13 +1,22 @@
 -- ghost.nvim/lua/ghost/cmp_source.lua
--- nvim-cmp source integration for ghost.nvim
+-- nvim-cmp source with debouncing for slow AI completions
 
 local source = {}
 
--- Store pending completions
-local pending = {
-  items = {},
-  ctx = nil,
+-- Singleton state to prevent concurrent requests
+local state = {
+  timer = nil,
+  cancel_fn = nil,
+  cached_items = nil,
+  cached_ctx_hash = nil,
 }
+
+local DEBOUNCE_MS = 400
+
+-- Hash context to detect if we're still at same position
+local function hash_ctx(ctx)
+  return ctx.bufnr .. ":" .. ctx.row .. ":" .. ctx.col .. ":" .. (ctx.before_cursor:sub(-50) or "")
+end
 
 function source.new()
   return setmetatable({}, { __index = source })
@@ -19,30 +28,57 @@ end
 
 function source:is_available()
   local ok, ghost = pcall(require, "ghost")
-  if not ok then
-    return false
-  end
-  return ghost.is_enabled() and ghost.is_filetype_enabled()
-end
-
-function source:get_trigger_characters()
-  return { ".", ":", "(", " " }
+  return ok and ghost.is_enabled() and ghost.is_filetype_enabled()
 end
 
 function source:complete(params, callback)
   local ghost = require("ghost")
   if not ghost.is_enabled() then
-    callback({ items = {}, isIncomplete = false })
+    callback({ items = {} })
     return
   end
 
   local context_mod = require("ghost.context")
+  local ctx = context_mod.build()
+  local ctx_hash = hash_ctx(ctx)
+
+  -- Return cached items if context hasn't changed
+  if state.cached_items and state.cached_ctx_hash == ctx_hash then
+    callback({ items = state.cached_items, isIncomplete = false })
+    return
+  end
+
+  -- Clear cache for new context
+  state.cached_items = nil
+  state.cached_ctx_hash = ctx_hash
+
+  -- Cancel pending timer
+  if state.timer then
+    state.timer:stop()
+    state.timer = nil
+  end
+
+  -- Return empty but mark as incomplete
+  callback({ items = {}, isIncomplete = true })
+
+  -- Debounce: wait for typing to stop before making API request
+  state.timer = vim.uv.new_timer()
+  state.timer:start(DEBOUNCE_MS, 0, vim.schedule_wrap(function()
+    state.timer = nil
+    self:do_request(ctx, ctx_hash)
+  end))
+end
+
+function source:do_request(ctx, ctx_hash)
+  -- Cancel previous request if still running
+  if state.cancel_fn then
+    state.cancel_fn()
+    state.cancel_fn = nil
+  end
+
   local api = require("ghost.api")
   local completion = require("ghost.completion")
   local cache = require("ghost.cache")
-
-  -- Build context
-  local ctx = context_mod.build()
 
   -- Check cache first
   local cache_key = cache.make_key(ctx)
@@ -50,70 +86,52 @@ function source:complete(params, callback)
   if cached then
     local parsed = completion.parse_completion(cached, ctx)
     if parsed then
-      vim.notify("[ghost] cmp: cache hit", vim.log.levels.DEBUG)
-      local item = self:make_item(parsed, ctx)
-      callback({ items = { item }, isIncomplete = false })
+      self:deliver_result(parsed, ctx, ctx_hash)
       return
     end
   end
 
-  -- Return incomplete immediately, then fetch async
-  callback({ items = {}, isIncomplete = true })
-
   -- Build prompt and make API request
   local prompt = completion.build_prompt(ctx)
 
-  vim.notify("[ghost] cmp: requesting AI completion...", vim.log.levels.INFO)
+  vim.notify("[ghost] cmp: API request starting...", vim.log.levels.INFO)
 
-  api.stream(prompt, {
+  state.cancel_fn = api.stream(prompt, {
     on_complete = function(final_text)
-      vim.notify("[ghost] cmp: got response", vim.log.levels.INFO)
-
-      -- Cache the result
+      vim.notify("[ghost] cmp: got response!", vim.log.levels.INFO)
       cache.set(cache_key, final_text)
 
-      -- Parse and store
       local parsed = completion.parse_completion(final_text, ctx)
       if parsed then
-        pending.items = { self:make_item(parsed, ctx) }
-        pending.ctx = ctx
-
-        -- Trigger cmp refresh to show the new item
-        vim.schedule(function()
-          local cmp = require("cmp")
-          if cmp.visible() then
-            cmp.complete({ reason = cmp.ContextReason.Auto })
-          end
-        end)
+        self:deliver_result(parsed, ctx, ctx_hash)
       end
     end,
-
     on_error = function(err)
-      vim.notify("[ghost] cmp: API error - " .. tostring(err), vim.log.levels.WARN)
+      vim.notify("[ghost] cmp: error - " .. tostring(err), vim.log.levels.WARN)
     end,
   })
 end
 
+function source:deliver_result(parsed, ctx, ctx_hash)
+  local item = self:make_item(parsed, ctx)
+
+  -- Cache for future calls at same position
+  state.cached_items = { item }
+  state.cached_ctx_hash = ctx_hash
+
+  -- Trigger cmp to refresh and show our item
+  vim.schedule(function()
+    local cmp = require("cmp")
+    cmp.complete({ reason = cmp.ContextReason.Auto })
+  end)
+end
+
 function source:make_item(comp, ctx)
   local cmp = require("cmp")
+  local text = comp.type == "insert" and comp.text or (comp.insert or "")
 
-  -- Get the text to insert
-  local text
-  if comp.type == "insert" then
-    text = comp.text
-  else
-    text = comp.insert or ""
-  end
-
-  -- Create label (first line, truncated)
-  local first_line = (text or ""):match("^[^\n]*") or ""
-  local label = first_line:sub(1, 60)
-  if #first_line > 60 then
-    label = label .. "..."
-  end
-  if label == "" then
-    label = "[AI completion]"
-  end
+  local label = (text:match("^[^\n]*") or ""):sub(1, 50)
+  if label == "" then label = "[AI completion]" end
 
   return {
     label = label,
@@ -123,17 +141,14 @@ function source:make_item(comp, ctx)
     sortText = "0000", -- Sort to top
     documentation = {
       kind = "markdown",
-      value = "**ghost.nvim AI completion**\n\n```" .. (ctx.filetype or "") .. "\n" .. (text or "") .. "\n```",
+      value = "```" .. (ctx.filetype or "") .. "\n" .. text .. "\n```",
     },
   }
 end
 
 function source.register()
-  local has_cmp, cmp = pcall(require, "cmp")
-  if not has_cmp then
-    return false
-  end
-
+  local ok, cmp = pcall(require, "cmp")
+  if not ok then return false end
   cmp.register_source("ghost", source.new())
   return true
 end
