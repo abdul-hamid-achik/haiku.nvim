@@ -1,0 +1,10 @@
+# Claude Code local settings
+.claude/
+
+# Neovim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
