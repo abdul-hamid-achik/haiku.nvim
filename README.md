@@ -52,11 +52,13 @@ use {
 
 ### API Key Setup
 
-Set your Anthropic API key via environment variable:
+Set your API key via environment variable (recommended):
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-your-key-here"
+export GHOST_API_KEY="sk-ant-your-key-here"
 ```
+
+This uses `GHOST_API_KEY` by default to avoid conflicts with other tools like Claude Code. Falls back to `ANTHROPIC_API_KEY` if `GHOST_API_KEY` is not set.
 
 Or pass it directly in the configuration (not recommended for security):
 
@@ -73,7 +75,7 @@ All options with their defaults:
 ```lua
 require("ghost").setup({
   -- API settings
-  api_key = nil,                              -- Falls back to ANTHROPIC_API_KEY env var
+  api_key = nil,                              -- Falls back to GHOST_API_KEY or ANTHROPIC_API_KEY
   model = "claude-haiku-4-5",                 -- Claude model (alias for latest Haiku 4.5)
   max_tokens = 512,                           -- Max tokens per completion
 
@@ -259,7 +261,7 @@ lua/ghost/
 ### No completions appearing
 
 1. Check that ghost.nvim is enabled: `:GhostStatus`
-2. Verify your API key is set: `echo $ANTHROPIC_API_KEY`
+2. Verify your API key is set: `echo $GHOST_API_KEY` (or `$ANTHROPIC_API_KEY`)
 3. Check if the filetype is enabled: `:set ft?`
 4. Enable debug mode for more info: `:GhostDebug`
 

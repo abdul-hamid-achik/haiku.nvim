@@ -107,12 +107,13 @@ function M.setup(opts)
   M.config = util.tbl_deep_extend(M.defaults, opts or {})
 
   -- Resolve API key from environment if not provided
-  M.config.api_key = M.config.api_key or vim.env.ANTHROPIC_API_KEY
+  -- Priority: config > GHOST_API_KEY > ANTHROPIC_API_KEY
+  M.config.api_key = M.config.api_key or vim.env.GHOST_API_KEY or vim.env.ANTHROPIC_API_KEY
 
   -- Validate API key
   if not M.config.api_key then
     vim.notify(
-      "[ghost.nvim] API key required. Set ANTHROPIC_API_KEY environment variable or pass api_key in setup().",
+      "[ghost.nvim] API key required. Set GHOST_API_KEY environment variable or pass api_key in setup().",
       vim.log.levels.ERROR
     )
     return
