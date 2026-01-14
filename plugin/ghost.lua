@@ -45,12 +45,18 @@ vim.api.nvim_create_user_command("GhostStatus", function()
   local status = ghost.status()
   local cache_stats = require("ghost.cache").stats()
 
+  local cmp_status = "standalone"
+  if status.use_cmp then
+    cmp_status = "nvim-cmp integration"
+  end
+
   local lines = {
     "ghost.nvim status:",
     "  Enabled: " .. tostring(status.enabled),
     "  Initialized: " .. tostring(status.initialized),
     "  Model: " .. (status.model or "not set"),
     "  API Key: " .. (status.api_key_set and "set" or "NOT SET"),
+    "  Mode: " .. cmp_status,
     "  Cache: " .. cache_stats.size .. "/" .. cache_stats.max_size .. " entries",
   }
 

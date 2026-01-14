@@ -6,6 +6,7 @@ local M = {}
 -- Plugin state
 M.enabled = false
 M.initialized = false
+M.use_cmp = false  -- Whether using nvim-cmp integration
 
 -- Default configuration
 M.defaults = {
@@ -106,6 +107,11 @@ M.defaults = {
     max_diagnostics = 5, -- Max diagnostics to include in context
   },
 
+  -- nvim-cmp integration
+  cmp = {
+    enabled = "auto",  -- "auto" | true | false
+  },
+
   -- Debug
   debug = false,
 }
@@ -144,9 +150,38 @@ function M.setup(opts)
     cache.set_ttl(M.config.cache.ttl_seconds or 300)
   end
 
+  -- Detect and register nvim-cmp source
+  local cmp_config = M.config.cmp or {}
+  if cmp_config.enabled == "auto" then
+    local cmp_source = require("ghost.cmp_source")
+    M.use_cmp = cmp_source.register()
+    if M.use_cmp then
+      util.log("Using nvim-cmp integration (auto-detected)", vim.log.levels.INFO)
+    end
+  elseif cmp_config.enabled == true then
+    local cmp_source = require("ghost.cmp_source")
+    M.use_cmp = cmp_source.register()
+    if not M.use_cmp then
+      vim.notify("[ghost.nvim] cmp.enabled=true but nvim-cmp not found", vim.log.levels.WARN)
+    end
+  else
+    M.use_cmp = false
+  end
+
   -- Initialize modules
   require("ghost.render").setup()
-  require("ghost.trigger").setup()
+
+  -- Only setup standalone triggers if not using cmp
+  if not M.use_cmp then
+    require("ghost.trigger").setup()
+  else
+    -- Still setup trigger module but don't enable auto-triggers
+    -- This allows manual :GhostTrigger to still work
+    local trigger = require("ghost.trigger")
+    trigger.setup()
+    trigger.disable()  -- Disable auto-triggers when using cmp
+  end
+
   require("ghost.accept").setup_keymaps()
 
   -- Mark as initialized and enabled
@@ -237,6 +272,7 @@ function M.status()
     initialized = M.initialized,
     model = M.config.model,
     api_key_set = M.config.api_key ~= nil,
+    use_cmp = M.use_cmp,
   }
 end
 

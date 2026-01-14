@@ -4,8 +4,10 @@ AI-powered code completions for Neovim using Claude. Ghost.nvim provides intelli
 
 ## Features
 
+- **nvim-cmp integration** - AI suggestions appear in your completion menu alongside LSP (auto-detected)
+- **Standalone mode** - Or use classic ghost text when nvim-cmp isn't installed
 - **Real-time completions** - Shows suggestions as you type with intelligent debouncing
-- **Progressive acceptance** - Accept full completion, next word, or current line only
+- **Progressive acceptance** - Accept full completion, next word, or current line only (standalone mode)
 - **Edit mode** - Suggests edits (delete + insert) not just insertions
 - **Rich context awareness** - Includes LSP symbols, diagnostics, treesitter scope, and recent edits
 - **Smart triggering** - Activates on text changes, cursor idle, or manual trigger
@@ -17,6 +19,7 @@ AI-powered code completions for Neovim using Claude. Ghost.nvim provides intelli
 - Neovim 0.10+
 - [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 - Anthropic API key
+- Optional: [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) (for integrated completion menu)
 - Optional: LSP client (for symbols and diagnostics)
 - Optional: Treesitter (for scope context)
 
@@ -140,6 +143,11 @@ require("ghost").setup({
   patterns = {
     detect_repetitive = true,                 -- Detect repetitive edits
     max_pattern_edits = 10,                   -- Max locations to suggest
+  },
+
+  -- nvim-cmp integration
+  cmp = {
+    enabled = "auto",                         -- "auto" | true | false
   },
 
   -- Debug
@@ -280,31 +288,63 @@ lua/ghost/
 
 ### Integration with nvim-cmp
 
-Ghost.nvim's default `<Tab>` key conflicts with nvim-cmp. Here are two solutions:
+Ghost.nvim **automatically integrates with nvim-cmp** when detected. AI suggestions appear directly in your completion menu alongside LSP completions - no configuration needed!
 
-#### Option 1: Use Different Keys (Simple)
+#### Automatic Integration (Recommended)
 
 ```lua
+-- ghost.nvim setup (cmp integration is automatic)
 {
   "abdul-hamid-achik/ghost.nvim",
   dependencies = { "nvim-lua/plenary.nvim" },
   event = "InsertEnter",
   config = function()
-    require("ghost").setup({
-      keymap = {
-        accept = "<C-y>",           -- Accept full completion (traditional "yes")
-        accept_word = "<M-Right>",  -- Accept next word (Alt+Right)
-        accept_line = "<C-l>",      -- Accept current line
-        dismiss = "<C-]>",          -- Dismiss suggestion
-      },
-    })
+    require("ghost").setup({})  -- cmp.enabled = "auto" by default
   end,
 }
+
+-- Add ghost to your cmp sources
+require("cmp").setup({
+  sources = {
+    { name = "nvim_lsp" },
+    { name = "ghost" },      -- AI completions appear here with [ghost.nvim] label
+    { name = "luasnip" },
+    { name = "buffer" },
+  },
+})
 ```
 
-#### Option 2: Smart Tab (Best DX)
+Check integration status with `:GhostStatus` - it will show `Mode: nvim-cmp integration` or `Mode: standalone`.
 
-Tab intelligently handles ghost.nvim, nvim-cmp, and LuaSnip:
+#### Configuration Options
+
+```lua
+require("ghost").setup({
+  cmp = {
+    enabled = "auto",  -- "auto" (detect cmp), true (force), false (standalone mode)
+  },
+})
+```
+
+#### Standalone Mode (Ghost Text)
+
+If you prefer classic ghost text instead of cmp integration:
+
+```lua
+require("ghost").setup({
+  cmp = { enabled = false },  -- Force standalone mode
+  keymap = {
+    accept = "<Tab>",
+    accept_word = "<C-Right>",
+    accept_line = "<C-l>",
+    dismiss = "<C-]>",
+  },
+})
+```
+
+#### Smart Tab (Standalone Mode)
+
+When using standalone mode with nvim-cmp, use Smart Tab to handle both:
 
 ```lua
 {
@@ -313,6 +353,7 @@ Tab intelligently handles ghost.nvim, nvim-cmp, and LuaSnip:
   event = "InsertEnter",
   config = function()
     require("ghost").setup({
+      cmp = { enabled = false },  -- Use standalone ghost text
       keymap = {
         accept = "",  -- Disable default Tab, we'll handle it manually
         accept_word = "<M-Right>",
@@ -339,26 +380,20 @@ Tab intelligently handles ghost.nvim, nvim-cmp, and LuaSnip:
         )
       end
     end, { silent = true, desc = "Smart Tab" })
-
-    -- Also add Ctrl+Y as explicit accept (works even when cmp menu is open)
-    vim.keymap.set("i", "<C-y>", function()
-      if require("ghost.render").has_completion() then
-        require("ghost.accept").accept()
-      end
-    end, { silent = true, desc = "Accept ghost completion" })
   end,
 }
 ```
 
-#### Recommended Keymaps Summary
+#### Feature Comparison
 
-| Key | Action | Notes |
-|-----|--------|-------|
-| `<Tab>` | Smart accept | Ghost → cmp → luasnip → indent |
-| `<C-y>` | Force accept ghost | Works even with cmp menu open |
-| `<M-Right>` | Accept word | Alt+Right, progressive |
-| `<C-l>` | Accept line | Line by line |
-| `<C-]>` | Dismiss | Close ghost suggestion |
+| Feature | nvim-cmp Mode | Standalone Mode |
+|---------|---------------|-----------------|
+| AI suggestions in cmp menu | Yes | No |
+| Ghost text (inline) | No | Yes |
+| Word-by-word accept | No | Yes |
+| Line-by-line accept | No | Yes |
+| Suggestion cycling | No | Yes |
+| Edit mode diff preview | No | Yes |
 
 ## License
 

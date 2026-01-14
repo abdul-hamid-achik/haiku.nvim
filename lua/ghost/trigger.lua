@@ -191,6 +191,12 @@ function M.should_skip()
     return true
   end
 
+  -- Check if nvim-cmp menu is visible
+  local has_cmp, cmp = pcall(require, "cmp")
+  if has_cmp and cmp.visible() then
+    return true
+  end
+
   -- Recording macro
   if vim.fn.reg_recording() ~= "" then
     return true
@@ -316,6 +322,12 @@ function M.should_skip_verbose()
   -- Popup menu visible (built-in completion)
   if vim.fn.pumvisible() == 1 then
     return true, "Popup menu visible"
+  end
+
+  -- Check if nvim-cmp menu is visible
+  local has_cmp, cmp = pcall(require, "cmp")
+  if has_cmp and cmp.visible() then
+    return true, "nvim-cmp menu visible"
   end
 
   -- Recording macro
