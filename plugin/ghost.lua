@@ -102,12 +102,14 @@ vim.api.nvim_create_user_command("GhostDebug", function()
   add("-- Render State --")
   add(vim.inspect(render.get_state()))
 
-  -- Open in a scratch buffer
-  local buf = vim.api.nvim_create_buf(false, true)
+  -- Open in a new split with scratch buffer
+  vim.cmd("new")
+  local buf = vim.api.nvim_get_current_buf()
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].filetype = "lua"
+  vim.bo[buf].buftype = "nofile"
   vim.bo[buf].bufhidden = "wipe"
-  vim.api.nvim_set_current_buf(buf)
+  vim.bo[buf].swapfile = false
 end, { desc = "Show ghost.nvim debug info" })
 
 -- :GhostTrigger - Manually trigger completion
