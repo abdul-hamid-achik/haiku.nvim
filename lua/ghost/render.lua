@@ -3,6 +3,9 @@
 
 local M = {}
 
+-- Forward declaration for local function
+local clear_display
+
 -- Namespace for extmarks
 M.namespace = vim.api.nvim_create_namespace("ghost_completion")
 
@@ -190,7 +193,7 @@ end
 
 --- Clear visual elements only (extmarks, floating windows).
 ---@param reset_state boolean? Whether to reset all state (default true)
-local function clear_display(reset_state)
+clear_display = function(reset_state)
   -- Clear extmarks
   if state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
     vim.api.nvim_buf_clear_namespace(state.bufnr, M.namespace, 0, -1)
