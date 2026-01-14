@@ -141,10 +141,13 @@ function M.setup_highlights()
   vim.api.nvim_set_hl(0, "GhostDiffAdd", { link = "DiffAdd", default = true })
 end
 
---- Enable the plugin.
+--- Enable the plugin (auto-initializes if needed).
 function M.enable()
   if not M.initialized then
-    vim.notify("[ghost.nvim] Not initialized. Call setup() first.", vim.log.levels.WARN)
+    M.setup({})  -- Auto-initialize with defaults
+  end
+  if not M.initialized then
+    -- setup() failed (likely no API key)
     return
   end
   M.enabled = true
@@ -160,7 +163,7 @@ function M.disable()
   require("ghost.util").log("ghost.nvim disabled", vim.log.levels.INFO)
 end
 
---- Toggle the plugin on/off.
+--- Toggle the plugin on/off (auto-initializes if needed).
 function M.toggle()
   if M.enabled then
     M.disable()
