@@ -89,6 +89,13 @@ function M.build()
     context.recent_changes = require("ghost.prediction").get_recent_changes()
   end
 
+  -- Get context from other open buffers
+  if ctx_config.other_buffers and ctx_config.other_buffers.enabled then
+    context.other_buffers = M.get_other_buffers_context(bufnr, context.filetype)
+  else
+    context.other_buffers = {}
+  end
+
   return context
 end
 
@@ -283,6 +290,133 @@ function M.get_file_size(bufnr)
     size = size + #line + 1 -- +1 for newline
   end
   return size
+end
+
+--- Get context from related open buffers.
+---@param current_bufnr number Current buffer number
+---@param current_filetype string Current filetype
+---@return table buffers Array of { name, filepath, filetype, symbols, snippet }
+function M.get_other_buffers_context(current_bufnr, current_filetype)
+  local config = require("ghost").config
+  local ctx_config = config.context.other_buffers
+
+  if not ctx_config or not ctx_config.enabled then
+    return {}
+  end
+
+  local result = {}
+  local bufs = vim.api.nvim_list_bufs()
+
+  -- Score and sort buffers by relevance
+  local scored_bufs = {}
+
+  for _, bufnr in ipairs(bufs) do
+    -- Skip current buffer
+    if bufnr == current_bufnr then
+      goto continue
+    end
+
+    -- Skip non-loaded, non-listed, or special buffers
+    if not vim.api.nvim_buf_is_loaded(bufnr) then
+      goto continue
+    end
+    if not vim.bo[bufnr].buflisted then
+      goto continue
+    end
+    if vim.bo[bufnr].buftype ~= "" then
+      goto continue
+    end
+
+    local ft = vim.bo[bufnr].filetype
+    local filepath = vim.api.nvim_buf_get_name(bufnr)
+
+    -- Skip buffers without a file path
+    if filepath == "" then
+      goto continue
+    end
+
+    -- Calculate relevance score
+    local score = 0
+
+    -- Same filetype is high priority
+    if ctx_config.include_same_filetype and ft == current_filetype then
+      score = score + 10
+    end
+
+    -- Same directory gets a bonus
+    local current_dir = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(current_bufnr), ":h")
+    local buf_dir = vim.fn.fnamemodify(filepath, ":h")
+    if current_dir == buf_dir then
+      score = score + 5
+    end
+
+    -- Recently accessed buffers
+    local buf_info = vim.fn.getbufinfo(bufnr)[1]
+    if buf_info and buf_info.lastused then
+      local age = os.time() - buf_info.lastused
+      if age < 60 then
+        score = score + 3
+      elseif age < 300 then
+        score = score + 2
+      elseif age < 600 then
+        score = score + 1
+      end
+    end
+
+    if score > 0 then
+      table.insert(scored_bufs, { bufnr = bufnr, score = score, filepath = filepath, filetype = ft })
+    end
+
+    ::continue::
+  end
+
+  -- Sort by score descending
+  table.sort(scored_bufs, function(a, b)
+    return a.score > b.score
+  end)
+
+  -- Take top N buffers
+  local max_bufs = ctx_config.max_buffers or 3
+  for i = 1, math.min(#scored_bufs, max_bufs) do
+    local buf = scored_bufs[i]
+    local buf_context = M.extract_buffer_context(buf.bufnr, buf.filepath, buf.filetype, ctx_config)
+    if buf_context then
+      table.insert(result, buf_context)
+    end
+  end
+
+  return result
+end
+
+--- Extract context from a single buffer.
+---@param bufnr number Buffer number
+---@param filepath string File path
+---@param filetype string File type
+---@param ctx_config table Config options
+---@return table|nil context { name, filepath, filetype, symbols, snippet }
+function M.extract_buffer_context(bufnr, filepath, filetype, ctx_config)
+  local filename = vim.fn.fnamemodify(filepath, ":t")
+
+  -- Get LSP symbols for this buffer
+  local symbols = M.get_lsp_symbols(bufnr)
+
+  -- Get a snippet (first N lines)
+  local max_lines = ctx_config.max_lines_per_buffer or 20
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, max_lines, false)
+  local snippet = table.concat(lines, "\n")
+
+  -- Skip if empty
+  if #symbols == 0 and snippet == "" then
+    return nil
+  end
+
+  return {
+    name = filename,
+    filepath = filepath,
+    filetype = filetype,
+    symbols = symbols,
+    snippet = snippet,
+  }
 end
 
 return M

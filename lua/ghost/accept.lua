@@ -257,16 +257,25 @@ function M.setup_keymaps()
     return "<Esc>"
   end, { expr = true, silent = true, desc = "Dismiss ghost and exit insert" })
 
-  -- Cycle next/prev (TODO: implement multiple suggestions)
+  -- Cycle to next suggestion (M-])
   if keymap.next and keymap.next ~= "" then
     vim.keymap.set("i", keymap.next, function()
-      -- TODO: cycle to next suggestion
+      if render.has_completion() then
+        local moved = render.next_suggestion()
+        if not moved then
+          -- At end of suggestions, request a new one
+          require("ghost.trigger").trigger_now()
+        end
+      end
     end, { silent = true, desc = "Next ghost suggestion" })
   end
 
+  -- Cycle to previous suggestion (M-[)
   if keymap.prev and keymap.prev ~= "" then
     vim.keymap.set("i", keymap.prev, function()
-      -- TODO: cycle to previous suggestion
+      if render.has_completion() then
+        render.prev_suggestion()
+      end
     end, { silent = true, desc = "Previous ghost suggestion" })
   end
 end

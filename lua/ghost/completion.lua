@@ -46,7 +46,7 @@ function M.request()
     util.log("Cache hit", vim.log.levels.DEBUG)
     local parsed = M.parse_completion(cached, ctx)
     if parsed and M.is_context_valid(request_id) then
-      render.show(parsed, ctx)
+      render.add_suggestion(parsed, ctx)
     end
     return function() end
   end
@@ -79,10 +79,10 @@ function M.request()
       -- Cache the result
       cache.set(cache_key, final_text)
 
-      -- Final render
+      -- Final render - add as a suggestion for cycling
       local parsed = M.parse_completion(final_text, ctx)
       if parsed then
-        render.show(parsed, ctx)
+        render.add_suggestion(parsed, ctx)
       end
     end,
 
@@ -182,6 +182,36 @@ RULES:
         break
       end -- Limit symbols
       table.insert(parts, string.format("  %s: %s", sym.kind, sym.name))
+    end
+  end
+
+  -- Other open buffers context
+  if ctx.other_buffers and #ctx.other_buffers > 0 then
+    table.insert(parts, "\nRelated files:")
+    for _, buf in ipairs(ctx.other_buffers) do
+      table.insert(parts, string.format("\n--- %s (%s) ---", buf.name, buf.filetype))
+
+      -- Include symbols if available (limit 5)
+      if buf.symbols and #buf.symbols > 0 then
+        table.insert(parts, "Symbols:")
+        for i, sym in ipairs(buf.symbols) do
+          if i > 5 then
+            break
+          end
+          table.insert(parts, string.format("  %s: %s", sym.kind, sym.name))
+        end
+      end
+
+      -- Include snippet (limited to 500 chars)
+      if buf.snippet and buf.snippet ~= "" then
+        local truncated = buf.snippet:sub(1, 500)
+        if #buf.snippet > 500 then
+          truncated = truncated .. "\n..."
+        end
+        table.insert(parts, "```" .. buf.filetype)
+        table.insert(parts, truncated)
+        table.insert(parts, "```")
+      end
     end
   end
 

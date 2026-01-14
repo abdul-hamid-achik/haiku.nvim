@@ -37,7 +37,12 @@ M.defaults = {
     include_lsp_symbols = true, -- Include document symbols
     include_treesitter = true, -- Include treesitter scope
     include_recent_changes = true, -- Track recent edits for pattern detection
-    other_buffers = false, -- Include relevant open buffers (TODO)
+    other_buffers = {
+      enabled = false, -- Include relevant open buffers
+      max_buffers = 3, -- Max other buffers to include
+      max_lines_per_buffer = 20, -- Max lines from each buffer
+      include_same_filetype = true, -- Prioritize same filetype
+    },
   },
 
   -- Keymaps
@@ -134,6 +139,9 @@ function M.setup_highlights()
 
   -- Ghost text highlight (defaults to Comment)
   vim.api.nvim_set_hl(0, "GhostText", { link = display.ghost_hl, default = true })
+
+  -- Indicator for multiple suggestions [1/3]
+  vim.api.nvim_set_hl(0, "GhostIndicator", { link = "Comment", default = true })
 
   -- Diff highlights for edit mode
   vim.api.nvim_set_hl(0, "GhostDiffDelete", { link = display.delete_hl, default = true })

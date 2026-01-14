@@ -8,6 +8,8 @@ M.namespace = vim.api.nvim_create_namespace("ghost_completion")
 
 -- Current state
 local state = {
+  completions = {}, -- Array of completions for cycling
+  current_index = 0, -- Current index (1-based, 0 means none)
   completion = nil, -- Current completion text
   completion_type = nil, -- "insert" or "edit"
   extmark_id = nil, -- Main extmark ID
@@ -37,8 +39,8 @@ function M.show(completion, ctx)
     return
   end
 
-  -- Clear any existing display
-  M.clear()
+  -- Clear any existing display (but keep completions array for cycling)
+  clear_display(false)
 
   local bufnr = vim.api.nvim_get_current_buf()
   local row = ctx.row - 1 -- Convert to 0-indexed
@@ -81,6 +83,12 @@ function M.show_insert(text, bufnr, row, col)
   -- First line: inline virtual text at cursor position
   local first_line = lines[1] or ""
   local virt_text = { { first_line, "GhostText" } }
+
+  -- Add indicator if multiple suggestions
+  if #state.completions > 1 then
+    local indicator = string.format(" [%d/%d]", state.current_index, #state.completions)
+    table.insert(virt_text, { indicator, "GhostIndicator" })
+  end
 
   -- Remaining lines: virtual lines below
   local virt_lines = {}
@@ -180,8 +188,9 @@ function M.show_edit(completion, bufnr, row, col)
   })
 end
 
---- Clear all ghost text and floating windows.
-function M.clear()
+--- Clear visual elements only (extmarks, floating windows).
+---@param reset_state boolean? Whether to reset all state (default true)
+local function clear_display(reset_state)
   -- Clear extmarks
   if state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
     vim.api.nvim_buf_clear_namespace(state.bufnr, M.namespace, 0, -1)
@@ -197,15 +206,25 @@ function M.clear()
     pcall(vim.api.nvim_buf_delete, state.float_buf, { force = true })
   end
 
-  -- Reset state
-  state.completion = nil
-  state.completion_type = nil
   state.extmark_id = nil
-  state.bufnr = nil
-  state.row = nil
-  state.col = nil
   state.float_win = nil
   state.float_buf = nil
+
+  if reset_state ~= false then
+    -- Full reset
+    state.completions = {}
+    state.current_index = 0
+    state.completion = nil
+    state.completion_type = nil
+    state.bufnr = nil
+    state.row = nil
+    state.col = nil
+  end
+end
+
+--- Clear all ghost text and floating windows.
+function M.clear()
+  clear_display(true)
 end
 
 --- Get the current completion.
@@ -240,6 +259,100 @@ end
 ---@return table
 function M.get_state()
   return vim.deepcopy(state)
+end
+
+--- Add a new suggestion to the list and display it.
+---@param completion table The completion to add
+---@param ctx table Context with row, col info
+function M.add_suggestion(completion, ctx)
+  if not completion then
+    return
+  end
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local row = ctx.row - 1 -- Convert to 0-indexed
+  local col = ctx.col
+
+  -- If position changed, clear existing suggestions
+  if state.row ~= row or state.col ~= col or state.bufnr ~= bufnr then
+    state.completions = {}
+    state.current_index = 0
+  end
+
+  -- Check for duplicate (by raw text)
+  for _, existing in ipairs(state.completions) do
+    if existing.raw == completion.raw then
+      return -- Skip duplicate
+    end
+  end
+
+  -- Add to array
+  table.insert(state.completions, completion)
+  state.current_index = #state.completions
+
+  -- Display this suggestion
+  M.show(completion, ctx)
+end
+
+--- Get total number of suggestions.
+---@return number count
+function M.get_suggestion_count()
+  return #state.completions
+end
+
+--- Get current suggestion index.
+---@return number index (1-based, 0 if none)
+function M.get_current_index()
+  return state.current_index
+end
+
+--- Cycle to the next suggestion.
+---@return boolean success Whether there was a next suggestion
+function M.next_suggestion()
+  if #state.completions == 0 then
+    return false
+  end
+
+  if state.current_index < #state.completions then
+    state.current_index = state.current_index + 1
+    state.completion = state.completions[state.current_index]
+    state.completion_type = state.completion.type
+    M.redisplay_current()
+    return true
+  end
+
+  return false -- At the end
+end
+
+--- Cycle to the previous suggestion.
+---@return boolean success
+function M.prev_suggestion()
+  if #state.completions == 0 or state.current_index <= 1 then
+    return false
+  end
+
+  state.current_index = state.current_index - 1
+  state.completion = state.completions[state.current_index]
+  state.completion_type = state.completion.type
+  M.redisplay_current()
+  return true
+end
+
+--- Redisplay the current suggestion (after cycling).
+function M.redisplay_current()
+  if not state.completion or not state.bufnr then
+    return
+  end
+
+  -- Clear existing display (keep state)
+  clear_display(false)
+
+  -- Re-show current
+  if state.completion.type == "insert" then
+    M.show_insert(state.completion.text, state.bufnr, state.row, state.col)
+  elseif state.completion.type == "edit" then
+    M.show_edit(state.completion, state.bufnr, state.row, state.col)
+  end
 end
 
 --- Update completion text in place (for progressive acceptance).
