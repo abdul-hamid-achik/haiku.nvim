@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/util.lua
+-- haiku.nvim/lua/haiku/util.lua
 -- Utility functions: debounce, throttle, helpers
 
 local M = {}
@@ -147,9 +147,9 @@ end
 ---@param msg string The message to log
 ---@param level? number vim.log.levels (default INFO)
 function M.log(msg, level)
-  local config = require("ghost").config
+  local config = require("haiku").config
   if config and config.debug then
-    vim.notify("[ghost] " .. msg, level or vim.log.levels.DEBUG)
+    vim.notify("[haiku] " .. msg, level or vim.log.levels.DEBUG)
   end
 end
 

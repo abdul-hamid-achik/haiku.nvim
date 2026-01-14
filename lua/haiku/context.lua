@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/context.lua
+-- haiku.nvim/lua/haiku/context.lua
 -- Rich context gathering: code, LSP, treesitter, diagnostics
 
 local M = {}
@@ -14,7 +14,7 @@ local symbol_cache = {
 --- Build context for the current cursor position.
 ---@return table context
 function M.build()
-  local config = require("ghost").config
+  local config = require("haiku").config
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row, col = cursor[1], cursor[2]
@@ -94,7 +94,7 @@ function M.build()
 
   -- Get recent changes for pattern detection
   if ctx_config.include_recent_changes then
-    context.recent_changes = require("ghost.prediction").get_recent_changes()
+    context.recent_changes = require("haiku.prediction").get_recent_changes()
   end
 
   -- Get context from other open buffers
@@ -112,7 +112,7 @@ end
 ---@param row number 1-indexed row
 ---@return table diagnostics
 function M.get_diagnostics(bufnr, row)
-  local config = require("ghost").config
+  local config = require("haiku").config
   local limits = config.limits or {}
   local max_diagnostics = limits.max_diagnostics or 5
 
@@ -329,7 +329,7 @@ end
 ---@param result table Output list
 ---@param depth number Current nesting depth
 function M.flatten_symbols(lsp_symbols, result, depth)
-  local config = require("ghost").config
+  local config = require("haiku").config
   local limits = config.limits or {}
   local max_depth = limits.max_symbol_depth or 2
   local max_symbols = limits.max_lsp_symbols or 20
@@ -380,7 +380,7 @@ end
 ---@param current_filetype string Current filetype
 ---@return table buffers Array of { name, filepath, filetype, symbols, snippet }
 function M.get_other_buffers_context(current_bufnr, current_filetype)
-  local config = require("ghost").config
+  local config = require("haiku").config
   local ctx_config = config.context.other_buffers
 
   if not ctx_config or not ctx_config.enabled then

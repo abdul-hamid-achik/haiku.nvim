@@ -1,9 +1,9 @@
--- ghost.nvim/lua/ghost/completion.lua
+-- haiku.nvim/lua/haiku/completion.lua
 -- Core completion engine: orchestrates context, API, and rendering
 
 local M = {}
 
-local util = require("ghost.util")
+local util = require("haiku.util")
 
 -- State for tracking current request
 local state = {
@@ -20,11 +20,11 @@ local next_id = util.id_generator()
 --- Request a completion for the current cursor position.
 ---@return function cancel Cancellation function
 function M.request()
-  local api = require("ghost.api")
-  local context_mod = require("ghost.context")
-  local render = require("ghost.render")
-  local cache = require("ghost.cache")
-  local config = require("ghost").config
+  local api = require("haiku.api")
+  local context_mod = require("haiku.context")
+  local render = require("haiku.render")
+  local cache = require("haiku.cache")
+  local config = require("haiku").config
 
   -- Generate new request ID
   local request_id = next_id()
@@ -131,7 +131,7 @@ end
 ---@param ctx table Context from context.build()
 ---@return table prompt { system = string, user = string }
 function M.build_prompt(ctx)
-  local config = require("ghost").config
+  local config = require("haiku").config
 
   -- Build system prompt
   local system = [[You are a code completion engine embedded in a text editor.

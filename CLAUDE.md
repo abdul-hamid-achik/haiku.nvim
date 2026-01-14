@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ghost.nvim is a Neovim plugin providing AI-powered code completions using the Claude API. It displays "ghost text" suggestions as the user types, similar to GitHub Copilot.
+haiku.nvim is a Neovim plugin providing AI-powered code completions using Anthropic's Claude Haiku model. It displays inline suggestions as the user types, similar to GitHub Copilot. This is an independent open-source project, not affiliated with or endorsed by Anthropic.
 
 ## Development
 
@@ -15,15 +15,15 @@ This is a pure Lua Neovim plugin with no build step. To test changes:
 nvim --cmd "set rtp+=." test_file.lua
 
 # Reload the plugin after changes (in Neovim)
-:lua package.loaded["ghost"] = nil
-:lua package.loaded["ghost.trigger"] = nil  -- repeat for each module
-:lua require("ghost").setup({})
+:lua package.loaded["haiku"] = nil
+:lua package.loaded["haiku.trigger"] = nil  -- repeat for each module
+:lua require("haiku").setup({})
 ```
 
 Manual testing commands:
-- `:GhostStatus` - Check plugin state
-- `:GhostDebug` - Inspect internal state (cache, render, completion)
-- `:GhostTrigger` - Force a completion request
+- `:HaikuStatus` - Check plugin state
+- `:HaikuDebug` - Inspect internal state (cache, render, completion)
+- `:HaikuTrigger` - Force a completion request
 
 ## Architecture
 
@@ -45,7 +45,7 @@ trigger.lua → context.lua → cache.lua → api.lua → render.lua → accept.
 
 - **Two completion types**: INSERT (pure text insertion) and EDIT (<<<DELETE/<<<INSERT markers for refactoring). The prompt in `completion.lua:137-156` instructs Claude on this format.
 
-- **Progressive acceptance**: Users can accept word-by-word or line-by-line. The render module updates the remaining ghost text in place (`render.lua:247-266`).
+- **Progressive acceptance**: Users can accept word-by-word or line-by-line. The render module updates the remaining inline text in place (`render.lua:247-266`).
 
 ## Module Responsibilities
 

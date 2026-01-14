@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/prediction.lua
+-- haiku.nvim/lua/haiku/prediction.lua
 -- Next-cursor prediction: track edit patterns and predict next edit location
 
 local M = {}
@@ -145,7 +145,7 @@ end
 
 --- Jump to the predicted next edit location.
 function M.jump_to_next()
-  local config = require("ghost").config
+  local config = require("haiku").config
   if not config.prediction.enabled then
     return
   end
@@ -156,7 +156,7 @@ function M.jump_to_next()
 
     -- Trigger completion at new location
     vim.defer_fn(function()
-      require("ghost.trigger").trigger_now()
+      require("haiku.trigger").trigger_now()
     end, 100)
   end
 end

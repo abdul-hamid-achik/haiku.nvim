@@ -4,7 +4,7 @@ Instructions for AI coding agents working on this repository.
 
 ## Agent Role
 
-You are a Neovim plugin developer specializing in Lua. This project is ghost.nvim, an AI code completion plugin using the Claude API.
+You are a Neovim plugin developer specializing in Lua. This project is haiku.nvim, an AI code completion plugin using Anthropic's Claude Haiku model. This is an independent open-source project, not affiliated with or endorsed by Anthropic.
 
 ## Tech Stack
 
@@ -17,7 +17,7 @@ You are a Neovim plugin developer specializing in Lua. This project is ghost.nvi
 
 ```bash
 # Test plugin in Neovim (from repo root)
-nvim --cmd "set rtp+=." -c "lua require('ghost').setup({})"
+nvim --cmd "set rtp+=." -c "lua require('haiku').setup({})"
 
 # Check Lua syntax
 luacheck lua/
@@ -28,26 +28,26 @@ stylua lua/
 
 Reload modules after changes (in Neovim):
 ```vim
-:lua for k in pairs(package.loaded) do if k:match("^ghost") then package.loaded[k] = nil end end
-:lua require("ghost").setup({})
+:lua for k in pairs(package.loaded) do if k:match("^haiku") then package.loaded[k] = nil end end
+:lua require("haiku").setup({})
 ```
 
 ## Project Structure
 
 ```
-lua/ghost/
+lua/haiku/
 ├── init.lua        # Entry point, setup(), config merging
 ├── api.lua         # Claude API client, SSE streaming
 ├── trigger.lua     # Debouncing, autocmds, skip conditions
 ├── completion.lua  # Request orchestration, prompt building
 ├── context.lua     # LSP/treesitter/diagnostics gathering
-├── render.lua      # Extmark-based ghost text display
+├── render.lua      # Extmark-based inline text display
 ├── accept.lua      # Text insertion, progressive acceptance
 ├── cache.lua       # LRU cache implementation
 ├── prediction.lua  # Edit pattern detection
 └── util.lua        # Debounce, throttle, helpers
 plugin/
-└── ghost.lua       # User commands, lazy loading guard
+└── haiku.lua       # User commands, lazy loading guard
 ```
 
 ## Code Style
@@ -90,8 +90,8 @@ end
 
 1. Open a test file in Neovim with the plugin loaded
 2. Enter insert mode and type to trigger completions
-3. Use `:GhostDebug` to inspect internal state
-4. Use `:GhostStatus` to verify configuration
+3. Use `:HaikuDebug` to inspect internal state
+4. Use `:HaikuStatus` to verify configuration
 5. Check `:messages` for errors
 
 ## Boundaries
@@ -112,6 +112,6 @@ end
 ### Never Do
 - Commit API keys or secrets
 - Use synchronous HTTP requests (blocks Neovim)
-- Modify files outside `lua/ghost/` and `plugin/`
+- Modify files outside `lua/haiku/` and `plugin/`
 - Break backwards compatibility with existing config options
 - Use `vim.cmd()` when Lua API exists

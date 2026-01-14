@@ -1,11 +1,13 @@
-# ghost.nvim
+# haiku.nvim
 
-AI-powered code completions for Neovim using Claude. Ghost.nvim provides intelligent "ghost text" suggestions as you type, similar to GitHub Copilot or Cursor.
+AI-powered code completions for Neovim, powered by Anthropic's Claude Haiku model. Haiku.nvim provides intelligent inline suggestions as you type, similar to GitHub Copilot or Cursor.
+
+> **Note:** This is an independent open-source project, not affiliated with or endorsed by Anthropic. It uses the Anthropic API to provide completions.
 
 ## Features
 
 - **nvim-cmp integration** - AI suggestions appear in your completion menu alongside LSP (auto-detected)
-- **Standalone mode** - Or use classic ghost text when nvim-cmp isn't installed
+- **Standalone mode** - Or use classic inline text when nvim-cmp isn't installed
 - **Real-time completions** - Shows suggestions as you type with intelligent debouncing
 - **Progressive acceptance** - Accept full completion, next word, or current line only (standalone mode)
 - **Edit mode** - Suggests edits (delete + insert) not just insertions
@@ -29,10 +31,10 @@ AI-powered code completions for Neovim using Claude. Ghost.nvim provides intelli
 
 ```lua
 {
-  "abdul-hamid-achik/ghost.nvim",
+  "abdul-hamid-achik/haiku.nvim",
   dependencies = { "nvim-lua/plenary.nvim" },
   config = function()
-    require("ghost").setup({
+    require("haiku").setup({
       -- your config here (see Configuration below)
     })
   end,
@@ -43,10 +45,10 @@ AI-powered code completions for Neovim using Claude. Ghost.nvim provides intelli
 
 ```lua
 use {
-  "abdul-hamid-achik/ghost.nvim",
+  "abdul-hamid-achik/haiku.nvim",
   requires = { "nvim-lua/plenary.nvim" },
   config = function()
-    require("ghost").setup({})
+    require("haiku").setup({})
   end,
 }
 ```
@@ -58,15 +60,15 @@ use {
 Set your API key via environment variable (recommended):
 
 ```bash
-export GHOST_API_KEY="sk-ant-your-key-here"
+export HAIKU_API_KEY="sk-ant-your-key-here"
 ```
 
-This uses `GHOST_API_KEY` by default to avoid conflicts with other tools like Claude Code. Falls back to `ANTHROPIC_API_KEY` if `GHOST_API_KEY` is not set.
+This uses `HAIKU_API_KEY` by default to avoid conflicts with other tools like Claude Code. Falls back to `ANTHROPIC_API_KEY` if `HAIKU_API_KEY` is not set.
 
 Or pass it directly in the configuration (not recommended for security):
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   api_key = "sk-ant-your-key-here",
 })
 ```
@@ -76,10 +78,10 @@ require("ghost").setup({
 All options with their defaults:
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   -- API settings
-  api_key = nil,                              -- Falls back to GHOST_API_KEY or ANTHROPIC_API_KEY
-  model = "claude-haiku-4-5",                 -- Claude model (alias for latest Haiku 4.5)
+  api_key = nil,                              -- Falls back to HAIKU_API_KEY or ANTHROPIC_API_KEY
+  model = "claude-haiku-4-5",                 -- Claude Haiku model (alias for latest Haiku 4.5)
   max_tokens = 512,                           -- Max tokens per completion
 
   -- Timing
@@ -120,7 +122,7 @@ require("ghost").setup({
 
   -- Display settings
   display = {
-    ghost_hl = "Comment",                     -- Highlight group for ghost text
+    haiku_hl = "Comment",                     -- Highlight group for inline text
     delete_hl = "DiffDelete",                 -- Highlight for deleted text
     change_hl = "DiffChange",                 -- Highlight for changed text
     priority = 1000,                          -- Extmark priority
@@ -158,13 +160,13 @@ require("ghost").setup({
 ### Minimal Configuration
 
 ```lua
-require("ghost").setup({})  -- Uses all defaults, API key from env var
+require("haiku").setup({})  -- Uses all defaults, API key from env var
 ```
 
 ### Custom Model
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   model = "claude-sonnet-4-5",  -- Use Sonnet 4.5 for higher quality
   max_tokens = 1024,
 })
@@ -173,7 +175,7 @@ require("ghost").setup({
 ### Pin to Specific Version (Recommended for Production)
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   -- Use full model ID for consistent behavior in production
   model = "claude-haiku-4-5-20251001",
 })
@@ -182,7 +184,7 @@ require("ghost").setup({
 ### Limit to Specific Filetypes
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   enabled_ft = { "lua", "python", "javascript", "typescript", "rust", "go" },
 })
 ```
@@ -193,13 +195,13 @@ require("ghost").setup({
 
 | Command | Description |
 |---------|-------------|
-| `:Ghost` | Toggle ghost.nvim on/off |
-| `:GhostEnable` | Enable completions |
-| `:GhostDisable` | Disable completions |
-| `:GhostStatus` | Show current status (enabled, model, cache stats) |
-| `:GhostClear` | Clear the completion cache |
-| `:GhostDebug` | Show debug information |
-| `:GhostTrigger` | Manually trigger a completion |
+| `:Haiku` | Toggle haiku.nvim on/off |
+| `:HaikuEnable` | Enable completions |
+| `:HaikuDisable` | Disable completions |
+| `:HaikuStatus` | Show current status (enabled, model, cache stats) |
+| `:HaikuClear` | Clear the completion cache |
+| `:HaikuDebug` | Show debug information |
+| `:HaikuTrigger` | Manually trigger a completion |
 
 ### Keymaps (Insert Mode)
 
@@ -216,7 +218,7 @@ require("ghost").setup({
 ### Workflow
 
 1. Start typing code in insert mode
-2. After a brief pause (default 300ms), ghost text appears showing the suggestion
+2. After a brief pause (default 300ms), inline text appears showing the suggestion
 3. Press `<Tab>` to accept the full completion
 4. Or use `<C-Right>` to accept word-by-word
 5. Or use `<C-l>` to accept line-by-line
@@ -227,26 +229,26 @@ require("ghost").setup({
 If you want to trigger a completion without waiting for the debounce:
 
 ```vim
-:GhostTrigger
+:HaikuTrigger
 ```
 
 Or bind it to a key:
 
 ```lua
-vim.keymap.set("i", "<C-Space>", "<cmd>GhostTrigger<cr>", { desc = "Trigger ghost completion" })
+vim.keymap.set("i", "<C-Space>", "<cmd>HaikuTrigger<cr>", { desc = "Trigger haiku completion" })
 ```
 
 ## Architecture
 
 ```
-lua/ghost/
+lua/haiku/
 ├── init.lua              -- Plugin setup and configuration
 ├── plugin/
-│   └── ghost.lua         -- Commands and plugin entry point
+│   └── haiku.lua         -- Commands and plugin entry point
 └── modules/
     ├── api.lua           -- Claude API client with streaming
     ├── trigger.lua       -- Smart trigger logic with debouncing
-    ├── render.lua        -- Ghost text display (extmarks)
+    ├── render.lua        -- Inline text display (extmarks)
     ├── accept.lua        -- Progressive acceptance
     ├── completion.lua    -- Core completion engine
     ├── context.lua       -- Context gathering (LSP, treesitter)
@@ -261,17 +263,17 @@ lua/ghost/
 2. **Context** - Builds rich context (code, LSP, diagnostics, treesitter)
 3. **Cache** - Checks if completion is already cached
 4. **API** - Streams completion from Claude using SSE
-5. **Render** - Shows ghost text using Neovim extmarks
+5. **Render** - Shows inline text using Neovim extmarks
 6. **Accept** - Inserts accepted text into buffer
 
 ## Troubleshooting
 
 ### No completions appearing
 
-1. Check that ghost.nvim is enabled: `:GhostStatus`
-2. Verify your API key is set: `echo $GHOST_API_KEY` (or `$ANTHROPIC_API_KEY`)
+1. Check that haiku.nvim is enabled: `:HaikuStatus`
+2. Verify your API key is set: `echo $HAIKU_API_KEY` (or `$ANTHROPIC_API_KEY`)
 3. Check if the filetype is enabled: `:set ft?`
-4. Enable debug mode for more info: `:GhostDebug`
+4. Enable debug mode for more info: `:HaikuDebug`
 
 ### Completions are slow
 
@@ -288,50 +290,50 @@ lua/ghost/
 
 ### Integration with nvim-cmp
 
-Ghost.nvim **automatically integrates with nvim-cmp** when detected. AI suggestions appear directly in your completion menu alongside LSP completions - no configuration needed!
+Haiku.nvim **automatically integrates with nvim-cmp** when detected. AI suggestions appear directly in your completion menu alongside LSP completions - no configuration needed!
 
 #### Automatic Integration (Recommended)
 
 ```lua
--- ghost.nvim setup (cmp integration is automatic)
+-- haiku.nvim setup (cmp integration is automatic)
 {
-  "abdul-hamid-achik/ghost.nvim",
+  "abdul-hamid-achik/haiku.nvim",
   dependencies = { "nvim-lua/plenary.nvim" },
   event = "InsertEnter",
   config = function()
-    require("ghost").setup({})  -- cmp.enabled = "auto" by default
+    require("haiku").setup({})  -- cmp.enabled = "auto" by default
   end,
 }
 
--- Add ghost to your cmp sources
+-- Add haiku to your cmp sources
 require("cmp").setup({
   sources = {
     { name = "nvim_lsp" },
-    { name = "ghost" },      -- AI completions appear here with [ghost.nvim] label
+    { name = "haiku" },      -- AI completions appear here with [haiku.nvim] label
     { name = "luasnip" },
     { name = "buffer" },
   },
 })
 ```
 
-Check integration status with `:GhostStatus` - it will show `Mode: nvim-cmp integration` or `Mode: standalone`.
+Check integration status with `:HaikuStatus` - it will show `Mode: nvim-cmp integration` or `Mode: standalone`.
 
 #### Configuration Options
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   cmp = {
     enabled = "auto",  -- "auto" (detect cmp), true (force), false (standalone mode)
   },
 })
 ```
 
-#### Standalone Mode (Ghost Text)
+#### Standalone Mode (Inline Text)
 
-If you prefer classic ghost text instead of cmp integration:
+If you prefer classic inline text instead of cmp integration:
 
 ```lua
-require("ghost").setup({
+require("haiku").setup({
   cmp = { enabled = false },  -- Force standalone mode
   keymap = {
     accept = "<Tab>",
@@ -348,12 +350,12 @@ When using standalone mode with nvim-cmp, use Smart Tab to handle both:
 
 ```lua
 {
-  "abdul-hamid-achik/ghost.nvim",
+  "abdul-hamid-achik/haiku.nvim",
   dependencies = { "nvim-lua/plenary.nvim" },
   event = "InsertEnter",
   config = function()
-    require("ghost").setup({
-      cmp = { enabled = false },  -- Use standalone ghost text
+    require("haiku").setup({
+      cmp = { enabled = false },  -- Use standalone inline text
       keymap = {
         accept = "",  -- Disable default Tab, we'll handle it manually
         accept_word = "<M-Right>",
@@ -362,14 +364,14 @@ When using standalone mode with nvim-cmp, use Smart Tab to handle both:
       },
     })
 
-    -- Smart Tab: ghost.nvim → nvim-cmp → luasnip → fallback
+    -- Smart Tab: haiku.nvim → nvim-cmp → luasnip → fallback
     vim.keymap.set("i", "<Tab>", function()
-      local ghost_render = require("ghost.render")
+      local haiku_render = require("haiku.render")
       local cmp = require("cmp")
       local luasnip = require("luasnip")
 
-      if ghost_render.has_completion() then
-        require("ghost.accept").accept()
+      if haiku_render.has_completion() then
+        require("haiku.accept").accept()
       elseif cmp.visible() then
         cmp.select_next_item()
       elseif luasnip.expand_or_locally_jumpable() then
@@ -389,11 +391,15 @@ When using standalone mode with nvim-cmp, use Smart Tab to handle both:
 | Feature | nvim-cmp Mode | Standalone Mode |
 |---------|---------------|-----------------|
 | AI suggestions in cmp menu | Yes | No |
-| Ghost text (inline) | No | Yes |
+| Inline text | No | Yes |
 | Word-by-word accept | No | Yes |
 | Line-by-line accept | No | Yes |
 | Suggestion cycling | No | Yes |
 | Edit mode diff preview | No | Yes |
+
+## Attribution
+
+This plugin is powered by Anthropic's Claude Haiku model. It is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic.
 
 ## License
 

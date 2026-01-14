@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/api.lua
+-- haiku.nvim/lua/haiku/api.lua
 -- Claude API client with streaming SSE support
 
 local M = {}
@@ -71,8 +71,8 @@ end
 ---@param callbacks table { on_chunk = function, on_complete = function, on_error = function }
 ---@return function cancel Function to cancel the request
 function M.stream(prompt_data, callbacks)
-  local config = require("ghost").config
-  local util = require("ghost.util")
+  local config = require("haiku").config
+  local util = require("haiku.util")
 
   local accumulated = ""
   local cancelled = false
@@ -98,7 +98,7 @@ function M.stream(prompt_data, callbacks)
         return
       end
       vim.schedule(function()
-        vim.notify("[ghost] API response complete (" .. #accumulated .. " chars)", vim.log.levels.INFO)
+        vim.notify("[haiku] API response complete (" .. #accumulated .. " chars)", vim.log.levels.INFO)
       end)
       if callbacks.on_complete then
         vim.schedule(function()
@@ -113,7 +113,7 @@ function M.stream(prompt_data, callbacks)
         return
       end
       vim.schedule(function()
-        vim.notify("[ghost] API error: " .. tostring(err), vim.log.levels.ERROR)
+        vim.notify("[haiku] API error: " .. tostring(err), vim.log.levels.ERROR)
       end)
       if callbacks.on_error then
         vim.schedule(function()
@@ -137,7 +137,7 @@ function M.stream(prompt_data, callbacks)
   })
 
   util.log("Making API request to Claude", vim.log.levels.DEBUG)
-  vim.notify("[ghost] API request started (model: " .. config.model .. ")", vim.log.levels.INFO)
+  vim.notify("[haiku] API request started (model: " .. config.model .. ")", vim.log.levels.INFO)
 
   -- Build curl command
   local curl_cmd = {
@@ -170,7 +170,7 @@ function M.stream(prompt_data, callbacks)
       local stderr = table.concat(data, "\n")
       if stderr ~= "" then
         vim.schedule(function()
-          vim.notify("[ghost] curl stderr: " .. stderr, vim.log.levels.WARN)
+          vim.notify("[haiku] curl stderr: " .. stderr, vim.log.levels.WARN)
         end)
       end
     end,
@@ -180,7 +180,7 @@ function M.stream(prompt_data, callbacks)
       end
       if exit_code ~= 0 then
         vim.schedule(function()
-          vim.notify("[ghost] curl exited with code: " .. exit_code, vim.log.levels.ERROR)
+          vim.notify("[haiku] curl exited with code: " .. exit_code, vim.log.levels.ERROR)
           if callbacks.on_error then
             callbacks.on_error("curl failed with exit code " .. exit_code)
           end
@@ -192,7 +192,7 @@ function M.stream(prompt_data, callbacks)
   })
 
   if job_id <= 0 then
-    vim.notify("[ghost] Failed to start curl job", vim.log.levels.ERROR)
+    vim.notify("[haiku] Failed to start curl job", vim.log.levels.ERROR)
     if callbacks.on_error then
       callbacks.on_error("Failed to start curl")
     end
@@ -212,7 +212,7 @@ end
 ---@param prompt_data table { system = string, user = string }
 ---@param callback function Called with (result, error)
 function M.complete(prompt_data, callback)
-  local config = require("ghost").config
+  local config = require("haiku").config
 
   local body = vim.json.encode({
     model = config.model,

@@ -1,9 +1,9 @@
--- ghost.nvim/lua/ghost/trigger.lua
+-- haiku.nvim/lua/haiku/trigger.lua
 -- Smart trigger logic with debouncing and skip conditions
 
 local M = {}
 
-local util = require("ghost.util")
+local util = require("haiku.util")
 
 -- Internal state
 local state = {
@@ -17,7 +17,7 @@ local state = {
 
 --- Setup the trigger module.
 function M.setup()
-  local config = require("ghost").config
+  local config = require("haiku").config
 
   -- Create debounced trigger function
   state.debounced_fn, state.debounce_timer = util.debounce_trailing(function()
@@ -25,7 +25,7 @@ function M.setup()
   end, config.debounce_ms)
 
   -- Create autocommand group
-  state.augroup = vim.api.nvim_create_augroup("GhostTrigger", { clear = true })
+  state.augroup = vim.api.nvim_create_augroup("HaikuTrigger", { clear = true })
 
   -- Enable by default
   M.enable()
@@ -38,7 +38,7 @@ function M.enable()
   end
   state.enabled = true
 
-  local config = require("ghost").config
+  local config = require("haiku").config
 
   -- Clear existing autocmds
   vim.api.nvim_clear_autocmds({ group = state.augroup })
@@ -58,7 +58,7 @@ function M.enable()
     group = state.augroup,
     callback = function()
       M.cancel()
-      require("ghost.render").clear()
+      require("haiku.render").clear()
     end,
   })
 
@@ -81,7 +81,7 @@ function M.enable()
     callback = function()
       -- Only clear if we moved to a different line (user rejected)
       -- Don't clear for horizontal movement (typing extends the line)
-      local render = require("ghost.render")
+      local render = require("haiku.render")
       local render_state = render.get_state()
       if render_state.row then
         local cursor = vim.api.nvim_win_get_cursor(0)
@@ -98,7 +98,7 @@ function M.enable()
       group = state.augroup,
       callback = function()
         local bufnr = vim.api.nvim_get_current_buf()
-        require("ghost.context").prefetch_symbols(bufnr)
+        require("haiku.context").prefetch_symbols(bufnr)
       end,
     })
   end
@@ -125,7 +125,7 @@ function M.on_text_changed()
   end
 
   -- Clear any existing completion when user types
-  require("ghost.render").clear()
+  require("haiku.render").clear()
 
   -- Cancel pending request
   M.cancel()
@@ -136,7 +136,7 @@ function M.on_text_changed()
   end
 
   -- Restart idle timer
-  local config = require("ghost").config
+  local config = require("haiku").config
   if config.trigger.on_idle then
     M.start_idle_timer()
   end
@@ -144,7 +144,7 @@ end
 
 --- Start the idle trigger timer.
 function M.start_idle_timer()
-  local config = require("ghost").config
+  local config = require("haiku").config
 
   -- Clear existing timer
   util.cleanup_timer(state.idle_timer)
@@ -161,7 +161,7 @@ end
 --- Check if we should skip triggering.
 ---@return boolean should_skip
 function M.should_skip()
-  local ghost = require("ghost")
+  local ghost = require("haiku")
   local config = ghost.config
 
   -- Plugin not enabled
@@ -268,24 +268,24 @@ function M.request_completion()
 
   util.log("Triggering completion request", vim.log.levels.DEBUG)
 
-  local completion = require("ghost.completion")
+  local completion = require("haiku.completion")
   state.cancel_fn = completion.request()
 end
 
 --- Trigger completion immediately (bypass debounce).
 function M.trigger_now()
-  local ghost = require("ghost")
+  local ghost = require("haiku")
 
   -- Always log when manually triggered
-  vim.notify("[ghost] trigger_now() called", vim.log.levels.INFO)
+  vim.notify("[haiku] trigger_now() called", vim.log.levels.INFO)
 
   local skip, reason = M.should_skip_verbose()
   if skip then
-    vim.notify("[ghost] Skipped: " .. reason, vim.log.levels.WARN)
+    vim.notify("[haiku] Skipped: " .. reason, vim.log.levels.WARN)
     return
   end
 
-  vim.notify("[ghost] Requesting completion...", vim.log.levels.INFO)
+  vim.notify("[haiku] Requesting completion...", vim.log.levels.INFO)
   M.cancel()
   M.request_completion()
 end
@@ -294,7 +294,7 @@ end
 ---@return boolean should_skip
 ---@return string|nil reason
 function M.should_skip_verbose()
-  local ghost = require("ghost")
+  local ghost = require("haiku")
 
   -- Plugin disabled
   if not ghost.is_enabled() then

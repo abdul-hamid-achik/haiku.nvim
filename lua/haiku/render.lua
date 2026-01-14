@@ -1,5 +1,5 @@
--- ghost.nvim/lua/ghost/render.lua
--- Ghost text and diff display using extmarks
+-- haiku.nvim/lua/haiku/render.lua
+-- Haiku text and diff display using extmarks
 
 local M = {}
 
@@ -7,7 +7,7 @@ local M = {}
 local clear_display
 
 -- Namespace for extmarks
-M.namespace = vim.api.nvim_create_namespace("ghost_completion")
+M.namespace = vim.api.nvim_create_namespace("haiku_completion")
 
 -- Current state
 local state = {
@@ -73,7 +73,7 @@ function M.show_insert(text, bufnr, row, col)
     return
   end
 
-  local config = require("ghost").config
+  local config = require("haiku").config
   local lines = vim.split(text, "\n", { plain = true })
 
   -- Limit lines shown
@@ -85,18 +85,18 @@ function M.show_insert(text, bufnr, row, col)
 
   -- First line: inline virtual text at cursor position
   local first_line = lines[1] or ""
-  local virt_text = { { first_line, "GhostText" } }
+  local virt_text = { { first_line, "HaikuText" } }
 
   -- Add indicator if multiple suggestions
   if #state.completions > 1 then
     local indicator = string.format(" [%d/%d]", state.current_index, #state.completions)
-    table.insert(virt_text, { indicator, "GhostIndicator" })
+    table.insert(virt_text, { indicator, "HaikuIndicator" })
   end
 
   -- Remaining lines: virtual lines below
   local virt_lines = {}
   for i = 2, #lines do
-    table.insert(virt_lines, { { lines[i], "GhostText" } })
+    table.insert(virt_lines, { { lines[i], "HaikuText" } })
   end
 
   -- Create extmark
@@ -120,20 +120,20 @@ end
 ---@param row number 0-indexed row
 ---@param col number Column
 function M.show_edit(completion, bufnr, row, col)
-  local config = require("ghost").config
+  local config = require("haiku").config
   local lines = {}
 
   -- Show deleted lines with - prefix
   if completion.delete and completion.delete ~= "" then
     for line in completion.delete:gmatch("[^\n]+") do
-      table.insert(lines, { "- " .. line, "GhostDiffDelete" })
+      table.insert(lines, { "- " .. line, "HaikuDiffDelete" })
     end
   end
 
   -- Show inserted lines with + prefix
   if completion.insert and completion.insert ~= "" then
     for line in completion.insert:gmatch("[^\n]+") do
-      table.insert(lines, { "+ " .. line, "GhostDiffAdd" })
+      table.insert(lines, { "+ " .. line, "HaikuDiffAdd" })
     end
   end
 
@@ -184,7 +184,7 @@ function M.show_edit(completion, bufnr, row, col)
 
   -- Also show a hint at cursor position
   state.extmark_id = vim.api.nvim_buf_set_extmark(bufnr, M.namespace, row, col, {
-    virt_text = { { " [edit]", "GhostText" } },
+    virt_text = { { " [edit]", "HaikuText" } },
     virt_text_pos = "overlay",
     hl_mode = "combine",
     priority = config.display.priority,

@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/cache.lua
+-- haiku.nvim/lua/haiku/cache.lua
 -- LRU cache for completion results
 
 local M = {}

@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/init.lua
+-- haiku.nvim/lua/haiku/init.lua
 -- Main entry point: setup(), configuration, state management
 
 local M = {}
@@ -58,7 +58,7 @@ M.defaults = {
 
   -- Display settings
   display = {
-    ghost_hl = "Comment", -- Highlight for ghost text
+    haiku_hl = "Comment", -- Highlight for ghost text
     delete_hl = "DiffDelete", -- Highlight for deleted text (in diffs)
     change_hl = "DiffChange", -- Highlight for changed text
     priority = 1000, -- Extmark priority
@@ -122,19 +122,19 @@ M.config = {}
 --- Setup the plugin with user configuration.
 ---@param opts? table User configuration options
 function M.setup(opts)
-  local util = require("ghost.util")
+  local util = require("haiku.util")
 
   -- Merge user config with defaults
   M.config = util.tbl_deep_extend(M.defaults, opts or {})
 
   -- Resolve API key from environment if not provided
-  -- Priority: config > GHOST_API_KEY > ANTHROPIC_API_KEY
-  M.config.api_key = M.config.api_key or vim.env.GHOST_API_KEY or vim.env.ANTHROPIC_API_KEY
+  -- Priority: config > HAIKU_API_KEY > ANTHROPIC_API_KEY
+  M.config.api_key = M.config.api_key or vim.env.HAIKU_API_KEY or vim.env.ANTHROPIC_API_KEY
 
   -- Validate API key
   if not M.config.api_key then
     vim.notify(
-      "[ghost.nvim] API key required. Set GHOST_API_KEY environment variable or pass api_key in setup().",
+      "[haiku.nvim] API key required. Set HAIKU_API_KEY environment variable or pass api_key in setup().",
       vim.log.levels.ERROR
     )
     return
@@ -144,7 +144,7 @@ function M.setup(opts)
   M.setup_highlights()
 
   -- Initialize cache settings
-  local cache = require("ghost.cache")
+  local cache = require("haiku.cache")
   if M.config.cache then
     cache.set_max_size(M.config.cache.max_size or 50)
     cache.set_ttl(M.config.cache.ttl_seconds or 300)
@@ -153,36 +153,36 @@ function M.setup(opts)
   -- Detect and register nvim-cmp source
   local cmp_config = M.config.cmp or {}
   if cmp_config.enabled == "auto" then
-    local cmp_source = require("ghost.cmp_source")
+    local cmp_source = require("haiku.cmp_source")
     M.use_cmp = cmp_source.register()
     if M.use_cmp then
       util.log("Using nvim-cmp integration (auto-detected)", vim.log.levels.INFO)
     end
   elseif cmp_config.enabled == true then
-    local cmp_source = require("ghost.cmp_source")
+    local cmp_source = require("haiku.cmp_source")
     M.use_cmp = cmp_source.register()
     if not M.use_cmp then
-      vim.notify("[ghost.nvim] cmp.enabled=true but nvim-cmp not found", vim.log.levels.WARN)
+      vim.notify("[haiku.nvim] cmp.enabled=true but nvim-cmp not found", vim.log.levels.WARN)
     end
   else
     M.use_cmp = false
   end
 
   -- Initialize modules
-  require("ghost.render").setup()
+  require("haiku.render").setup()
 
   -- Setup triggers - they work alongside cmp integration
   -- When cmp is visible, trigger skips (via cmp.visible() check in should_skip)
   -- When cmp is NOT visible, trigger shows inline ghost text
-  require("ghost.trigger").setup()
+  require("haiku.trigger").setup()
 
-  require("ghost.accept").setup_keymaps()
+  require("haiku.accept").setup_keymaps()
 
   -- Mark as initialized and enabled
   M.initialized = true
   M.enabled = true
 
-  util.log("ghost.nvim initialized", vim.log.levels.INFO)
+  util.log("haiku.nvim initialized", vim.log.levels.INFO)
 end
 
 --- Setup highlight groups.
@@ -190,15 +190,15 @@ function M.setup_highlights()
   local display = M.config.display
 
   -- Ghost text highlight (defaults to Comment)
-  vim.api.nvim_set_hl(0, "GhostText", { link = display.ghost_hl, default = true })
+  vim.api.nvim_set_hl(0, "HaikuText", { link = display.haiku_hl, default = true })
 
   -- Indicator for multiple suggestions [1/3]
-  vim.api.nvim_set_hl(0, "GhostIndicator", { link = "Comment", default = true })
+  vim.api.nvim_set_hl(0, "HaikuIndicator", { link = "Comment", default = true })
 
   -- Diff highlights for edit mode
-  vim.api.nvim_set_hl(0, "GhostDiffDelete", { link = display.delete_hl, default = true })
-  vim.api.nvim_set_hl(0, "GhostDiffChange", { link = display.change_hl, default = true })
-  vim.api.nvim_set_hl(0, "GhostDiffAdd", { link = "DiffAdd", default = true })
+  vim.api.nvim_set_hl(0, "HaikuDiffDelete", { link = display.delete_hl, default = true })
+  vim.api.nvim_set_hl(0, "HaikuDiffChange", { link = display.change_hl, default = true })
+  vim.api.nvim_set_hl(0, "HaikuDiffAdd", { link = "DiffAdd", default = true })
 end
 
 --- Enable the plugin (auto-initializes if needed).
@@ -211,16 +211,16 @@ function M.enable()
     return
   end
   M.enabled = true
-  require("ghost.trigger").enable()
-  require("ghost.util").log("ghost.nvim enabled", vim.log.levels.INFO)
+  require("haiku.trigger").enable()
+  require("haiku.util").log("haiku.nvim enabled", vim.log.levels.INFO)
 end
 
 --- Disable the plugin.
 function M.disable()
   M.enabled = false
-  require("ghost.trigger").disable()
-  require("ghost.render").clear()
-  require("ghost.util").log("ghost.nvim disabled", vim.log.levels.INFO)
+  require("haiku.trigger").disable()
+  require("haiku.render").clear()
+  require("haiku.util").log("haiku.nvim disabled", vim.log.levels.INFO)
 end
 
 --- Toggle the plugin on/off (auto-initializes if needed).
@@ -274,7 +274,7 @@ end
 ---@param enabled? boolean If nil, toggles current state
 function M.set_debug(enabled)
   if not M.initialized then
-    vim.notify("[ghost.nvim] Not initialized", vim.log.levels.WARN)
+    vim.notify("[haiku.nvim] Not initialized", vim.log.levels.WARN)
     return
   end
   if enabled == nil then
@@ -282,7 +282,7 @@ function M.set_debug(enabled)
   else
     M.config.debug = enabled
   end
-  vim.notify("[ghost.nvim] Debug mode: " .. (M.config.debug and "ON" or "OFF"))
+  vim.notify("[haiku.nvim] Debug mode: " .. (M.config.debug and "ON" or "OFF"))
 end
 
 return M

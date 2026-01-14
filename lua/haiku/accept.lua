@@ -1,9 +1,9 @@
--- ghost.nvim/lua/ghost/accept.lua
+-- haiku.nvim/lua/haiku/accept.lua
 -- Progressive acceptance: word, line, or full completion
 
 local M = {}
 
-local render = require("ghost.render")
+local render = require("haiku.render")
 
 --- Accept the full completion.
 ---@return boolean success Whether a completion was accepted
@@ -26,16 +26,16 @@ function M.accept()
     end
 
     -- Trigger next completion if configured
-    local config = require("ghost").config
+    local config = require("haiku").config
     if config.trigger.after_accept then
       vim.defer_fn(function()
-        require("ghost.trigger").trigger_now()
+        require("haiku.trigger").trigger_now()
       end, 50)
     end
 
     -- Record edit for prediction
     if config.prediction.enabled then
-      require("ghost.prediction").record_accept(completion)
+      require("haiku.prediction").record_accept(completion)
     end
   end)
 
@@ -124,7 +124,7 @@ end
 --- Dismiss the current completion without accepting.
 function M.dismiss()
   render.clear()
-  require("ghost.trigger").cancel()
+  require("haiku.trigger").cancel()
 end
 
 --- Insert text at the current cursor position.
@@ -175,9 +175,9 @@ function M.insert_text(text)
   end
 
   -- Record edit for prediction
-  local config = require("ghost").config
+  local config = require("haiku").config
   if config.prediction and config.prediction.enabled then
-    require("ghost.prediction").record_edit(
+    require("haiku.prediction").record_edit(
       { row = start_row, col = start_col },
       { before = "", after = text }
     )
@@ -211,8 +211,8 @@ end
 --- Apply an edit (delete + insert).
 ---@param completion table { delete = string, insert = string }
 function M.apply_edit(completion)
-  local config = require("ghost").config
-  local util = require("ghost.util")
+  local config = require("haiku").config
+  local util = require("haiku.util")
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1]
@@ -280,7 +280,7 @@ function M.apply_edit(completion)
 
   -- Record edit for prediction (insert_text already records its own, so only record delete here)
   if config.prediction and config.prediction.enabled and completion.delete and completion.delete ~= "" then
-    require("ghost.prediction").record_edit(
+    require("haiku.prediction").record_edit(
       { row = row, col = 0 },
       { before = completion.delete, after = "" }
     )
@@ -289,7 +289,7 @@ end
 
 --- Setup keymaps for acceptance.
 function M.setup_keymaps()
-  local config = require("ghost").config
+  local config = require("haiku").config
   local keymap = config.keymap
 
   -- Accept full completion with Tab (skip if empty - user handles it manually)
@@ -301,7 +301,7 @@ function M.setup_keymaps()
       end
       -- Fallback: return the key literally (for other plugins to handle)
       return keymap.accept
-    end, { expr = true, silent = true, desc = "Accept ghost completion" })
+    end, { expr = true, silent = true, desc = "Accept haiku completion" })
   end
 
   -- Accept word with Ctrl+Right (skip if empty)
@@ -313,7 +313,7 @@ function M.setup_keymaps()
         -- Fallback: normal word movement
         vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-Right>", true, false, true), "n", false)
       end
-    end, { silent = true, desc = "Accept ghost word" })
+    end, { silent = true, desc = "Accept haiku word" })
   end
 
   -- Accept line with Ctrl+L (skip if empty)
@@ -325,7 +325,7 @@ function M.setup_keymaps()
         -- Fallback: normal Ctrl+L behavior (redraw)
         vim.cmd("redraw!")
       end
-    end, { silent = true, desc = "Accept ghost line" })
+    end, { silent = true, desc = "Accept haiku line" })
   end
 
   -- Dismiss with Ctrl+] (skip if empty)
@@ -334,7 +334,7 @@ function M.setup_keymaps()
       if render.has_completion() then
         M.dismiss()
       end
-    end, { silent = true, desc = "Dismiss ghost completion" })
+    end, { silent = true, desc = "Dismiss haiku completion" })
   end
 
   -- Also dismiss on Escape (but don't override normal Escape behavior)
@@ -344,7 +344,7 @@ function M.setup_keymaps()
     end
     -- Always exit insert mode
     return "<Esc>"
-  end, { expr = true, silent = true, desc = "Dismiss ghost and exit insert" })
+  end, { expr = true, silent = true, desc = "Dismiss haiku and exit insert" })
 
   -- Cycle to next suggestion (M-])
   if keymap.next and keymap.next ~= "" then
@@ -353,10 +353,10 @@ function M.setup_keymaps()
         local moved = render.next_suggestion()
         if not moved then
           -- At end of suggestions, request a new one
-          require("ghost.trigger").trigger_now()
+          require("haiku.trigger").trigger_now()
         end
       end
-    end, { silent = true, desc = "Next ghost suggestion" })
+    end, { silent = true, desc = "Next haiku suggestion" })
   end
 
   -- Cycle to previous suggestion (M-[)
@@ -365,7 +365,7 @@ function M.setup_keymaps()
       if render.has_completion() then
         render.prev_suggestion()
       end
-    end, { silent = true, desc = "Previous ghost suggestion" })
+    end, { silent = true, desc = "Previous haiku suggestion" })
   end
 end
 

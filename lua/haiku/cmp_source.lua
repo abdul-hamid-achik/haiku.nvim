@@ -1,4 +1,4 @@
--- ghost.nvim/lua/ghost/cmp_source.lua
+-- haiku.nvim/lua/haiku/cmp_source.lua
 -- nvim-cmp source with debouncing for slow AI completions
 
 local source = {}
@@ -23,7 +23,7 @@ function source.new()
 end
 
 function source:get_debug_name()
-  return "ghost"
+  return "haiku"
 end
 
 function source:is_available()
@@ -32,13 +32,13 @@ function source:is_available()
 end
 
 function source:complete(params, callback)
-  local ghost = require("ghost")
+  local ghost = require("haiku")
   if not ghost.is_enabled() then
     callback({ items = {} })
     return
   end
 
-  local context_mod = require("ghost.context")
+  local context_mod = require("haiku.context")
   local ctx = context_mod.build()
   local ctx_hash = hash_ctx(ctx)
 
@@ -75,9 +75,9 @@ function source:do_request(ctx, ctx_hash)
     state.cancel_fn = nil
   end
 
-  local api = require("ghost.api")
-  local completion = require("ghost.completion")
-  local cache = require("ghost.cache")
+  local api = require("haiku.api")
+  local completion = require("haiku.completion")
+  local cache = require("haiku.cache")
 
   -- Check cache first
   local cache_key = cache.make_key(ctx)
@@ -93,11 +93,11 @@ function source:do_request(ctx, ctx_hash)
   -- Build prompt and make API request
   local prompt = completion.build_prompt(ctx)
 
-  vim.notify("[ghost] cmp: API request starting...", vim.log.levels.INFO)
+  vim.notify("[haiku] cmp: API request starting...", vim.log.levels.INFO)
 
   state.cancel_fn = api.stream(prompt, {
     on_complete = function(final_text)
-      vim.notify("[ghost] cmp: got response!", vim.log.levels.INFO)
+      vim.notify("[haiku] cmp: got response!", vim.log.levels.INFO)
       cache.set(cache_key, final_text)
 
       local parsed = completion.parse_completion(final_text, ctx)
@@ -106,7 +106,7 @@ function source:do_request(ctx, ctx_hash)
       end
     end,
     on_error = function(err)
-      vim.notify("[ghost] cmp: error - " .. tostring(err), vim.log.levels.WARN)
+      vim.notify("[haiku] cmp: error - " .. tostring(err), vim.log.levels.WARN)
     end,
   })
 end
@@ -145,11 +145,11 @@ function source:make_item(comp, ctx)
     label = label,
     insertText = text,
     kind = cmp.lsp.CompletionItemKind.Snippet,
-    detail = "ghost.nvim AI",
+    detail = "haiku.nvim AI",
     sortText = "!0000", -- Sort to very top (! comes before alphanumeric)
     documentation = {
       kind = "markdown",
-      value = "**AI Suggestion from ghost.nvim**\n\n```" .. (ctx.filetype or "") .. "\n" .. text .. "\n```",
+      value = "**AI Suggestion from haiku.nvim**\n\n```" .. (ctx.filetype or "") .. "\n" .. text .. "\n```",
     },
   }
 end
@@ -157,7 +157,7 @@ end
 function source.register()
   local ok, cmp = pcall(require, "cmp")
   if not ok then return false end
-  cmp.register_source("ghost", source.new())
+  cmp.register_source("haiku", source.new())
   return true
 end
 
