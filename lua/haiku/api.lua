@@ -2,69 +2,7 @@
 -- Claude API client with streaming SSE support
 
 local M = {}
-
---- Create an SSE (Server-Sent Events) parser.
---- Handles partial chunks and extracts text deltas from Claude's streaming response.
----@param on_text function Called with each text chunk
----@param on_complete function Called when streaming is complete
----@param on_error function Called on error
----@return function parser The parser function to feed chunks to
-local function create_sse_parser(on_text, on_complete, on_error)
-  local buffer = ""
-
-  return function(chunk)
-    if not chunk then
-      return
-    end
-
-    buffer = buffer .. chunk
-
-    -- Process complete lines
-    while true do
-      local newline_pos = buffer:find("\n")
-      if not newline_pos then
-        break
-      end
-
-      local line = buffer:sub(1, newline_pos - 1)
-      buffer = buffer:sub(newline_pos + 1)
-
-      -- Remove carriage return if present (CRLF -> LF)
-      line = line:gsub("\r$", "")
-
-      -- Parse SSE data lines
-      if line:match("^data: ") then
-        local json_str = line:sub(7)
-
-        -- Skip [DONE] marker
-        if json_str == "[DONE]" then
-          on_complete()
-          return
-        end
-
-        -- Parse JSON
-        local ok, data = pcall(vim.json.decode, json_str)
-        if ok and data then
-          -- Handle different event types
-          if data.type == "content_block_delta" then
-            if data.delta and data.delta.type == "text_delta" and data.delta.text then
-              on_text(data.delta.text)
-            end
-          elseif data.type == "message_stop" then
-            on_complete()
-          elseif data.type == "error" then
-            local err_msg = "API error"
-            if data.error and data.error.message then
-              err_msg = data.error.message
-            end
-            on_error(err_msg)
-          end
-          -- Ignore other event types: message_start, content_block_start, content_block_stop, message_delta
-        end
-      end
-    end
-  end
-end
+local core = require("haiku.core")
 
 --- Make a streaming completion request to Claude using curl via jobstart.
 ---@param prompt_data table { system = string, user = string }
@@ -79,8 +17,8 @@ function M.stream(prompt_data, callbacks)
   local job_id = nil
 
   -- Create SSE parser
-  local parser = create_sse_parser(
-    function(text) -- on_text
+  local parser = core.create_sse_parser({
+    on_text = function(text)
       if cancelled then
         return
       end
@@ -93,7 +31,7 @@ function M.stream(prompt_data, callbacks)
         end)
       end
     end,
-    function() -- on_complete
+    on_complete = function()
       if cancelled then
         return
       end
@@ -111,7 +49,7 @@ function M.stream(prompt_data, callbacks)
         end)
       end
     end,
-    function(err) -- on_error
+    on_error = function(err)
       if cancelled then
         return
       end
@@ -128,8 +66,8 @@ function M.stream(prompt_data, callbacks)
           end
         end)
       end
-    end
-  )
+    end,
+  })
 
   -- Build request body
   local body = vim.json.encode({
@@ -152,6 +90,8 @@ function M.stream(prompt_data, callbacks)
   local curl_cmd = {
     "curl",
     "-s",
+    "--connect-timeout", "10",  -- 10 second connection timeout
+    "--max-time", "60",         -- 60 second total timeout for streaming
     "-X", "POST",
     "https://api.anthropic.com/v1/messages",
     "-H", "Content-Type: application/json",
@@ -235,6 +175,8 @@ function M.complete(prompt_data, callback)
   local curl_cmd = {
     "curl",
     "-s",
+    "--connect-timeout", "10",  -- 10 second connection timeout
+    "--max-time", "30",         -- 30 second total timeout for non-streaming
     "-X", "POST",
     "https://api.anthropic.com/v1/messages",
     "-H", "Content-Type: application/json",
@@ -243,7 +185,7 @@ function M.complete(prompt_data, callback)
     "-d", body,
   }
 
-  vim.fn.jobstart(curl_cmd, {
+  local job_id = vim.fn.jobstart(curl_cmd, {
     on_stdout = function(_, data, _)
       local response = table.concat(data, "\n")
       if response == "" then
@@ -280,6 +222,13 @@ function M.complete(prompt_data, callback)
     stdout_buffered = true,
     stderr_buffered = true,
   })
+
+  -- Handle jobstart failure
+  if job_id <= 0 then
+    vim.schedule(function()
+      callback(nil, "Failed to start curl job: " .. tostring(job_id))
+    end)
+  end
 end
 
 return M

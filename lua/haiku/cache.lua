@@ -18,12 +18,28 @@ function M.make_key(ctx)
   local prefix_tail = ctx.before_cursor:sub(-300)
   local suffix_head = ctx.after_cursor:sub(1, 100)
 
-  -- Use a null byte as delimiter to prevent collision between different combinations
-  -- e.g., "a|b" + "c" vs "a" + "b|c" would previously both produce "a|b|c"
-  local key_str = ctx.filetype .. "\0" .. prefix_tail .. "\0" .. suffix_head
+  -- Use length markers as delimiters to prevent collision between different combinations
+  -- e.g., "a|b" + "c" vs "a" + "b|c" would collide with simple concatenation
+  -- Format: filetype:len1:prefix:len2:suffix ensures unique keys
+  local key_str = string.format(
+    "%s:%d:%s:%d:%s",
+    ctx.filetype,
+    #prefix_tail,
+    prefix_tail,
+    #suffix_head,
+    suffix_head
+  )
 
-  -- Hash the key to keep it manageable and prevent any edge case collisions
-  return vim.fn.sha256(key_str)
+  -- For very long keys, use a simple hash (djb2 algorithm)
+  if #key_str > 200 then
+    local hash = 5381
+    for i = 1, #key_str do
+      hash = ((hash * 33) + string.byte(key_str, i)) % 2147483647
+    end
+    return string.format("%s_%d_%x", ctx.filetype, #prefix_tail, hash)
+  end
+
+  return key_str
 end
 
 --- Get a value from the cache.

@@ -123,12 +123,18 @@ M.config = {}
 ---@param config table The configuration to validate
 ---@return boolean valid, string|nil error_message
 local function validate_config(config)
-  -- Validate api_key type
-  if config.api_key and type(config.api_key) ~= "string" then
-    return false, "api_key must be a string"
+  -- Validate api_key type and format
+  if config.api_key then
+    if type(config.api_key) ~= "string" then
+      return false, "api_key must be a string"
+    end
+    -- Check for whitespace-only API key
+    if config.api_key:match("^%s*$") then
+      return false, "api_key cannot be empty or whitespace-only"
+    end
   end
 
-  -- Validate numeric fields
+  -- Validate numeric fields exist and are numbers
   local numeric_fields = {
     { "debounce_ms", config.debounce_ms },
     { "min_chars", config.min_chars },
@@ -139,6 +145,25 @@ local function validate_config(config)
   for _, field in ipairs(numeric_fields) do
     if field[2] and type(field[2]) ~= "number" then
       return false, field[1] .. " must be a number"
+    end
+  end
+
+  -- Validate numeric bounds
+  if config.debounce_ms and config.debounce_ms <= 0 then
+    return false, "debounce_ms must be greater than 0"
+  end
+  if config.min_chars and config.min_chars < 1 then
+    return false, "min_chars must be at least 1"
+  end
+  if config.idle_trigger_ms and config.idle_trigger_ms <= 0 then
+    return false, "idle_trigger_ms must be greater than 0"
+  end
+  if config.max_tokens then
+    if config.max_tokens <= 0 then
+      return false, "max_tokens must be greater than 0"
+    end
+    if config.max_tokens > 4096 then
+      return false, "max_tokens cannot exceed 4096"
     end
   end
 
@@ -222,6 +247,7 @@ function M.setup(opts)
 
   -- Initialize modules
   require("haiku.render").setup()
+  require("haiku.context").setup()
 
   -- Setup triggers - they work alongside cmp integration
   -- When cmp is visible, trigger skips (via cmp.visible() check in should_skip)
@@ -229,6 +255,14 @@ function M.setup(opts)
   require("haiku.trigger").setup()
 
   require("haiku.accept").setup_keymaps()
+
+  -- Cleanup on Vim exit
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = vim.api.nvim_create_augroup("HaikuCleanup", { clear = true }),
+    callback = function()
+      require("haiku.trigger").cleanup()
+    end,
+  })
 
   -- Mark as initialized and enabled
   M.initialized = true

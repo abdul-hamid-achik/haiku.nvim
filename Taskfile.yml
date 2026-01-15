@@ -1,0 +1,24 @@
+version: '3'
+
+tasks:
+  test:
+    desc: Run tests (use -- file.lua for single file)
+    cmds:
+      - |
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          nvim --headless -u test_init.lua -c "PlenaryBustedDirectory lua/spec/" -c "qa!"
+        else
+          nvim --headless -u test_init.lua -c "PlenaryBustedFile {{.CLI_ARGS}}" -c "qa!"
+        fi
+
+  deps:
+    desc: Install test dependencies (plenary.nvim)
+    cmds:
+      - git clone --depth 1 https://github.com/nvim-lua/plenary.nvim.git
+    status:
+      - test -d plenary.nvim
+
+  clean:
+    desc: Clean test artifacts
+    cmds:
+      - rm -rf plenary.nvim

@@ -490,14 +490,22 @@ end
 ---@param ctx_config table Config options
 ---@return table|nil context { name, filepath, filetype, symbols, snippet }
 function M.extract_buffer_context(bufnr, filepath, filetype, ctx_config)
+  -- Validate buffer before accessing (could have been deleted since selection)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return nil
+  end
+
   local filename = vim.fn.fnamemodify(filepath, ":t")
 
   -- Get LSP symbols for this buffer
   local symbols = M.get_lsp_symbols(bufnr)
 
-  -- Get a snippet (first N lines)
+  -- Get a snippet (first N lines) - wrap in pcall in case buffer becomes invalid
   local max_lines = ctx_config.max_lines_per_buffer or 20
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, max_lines, false)
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, max_lines, false)
+  if not ok then
+    return nil
+  end
   local snippet = table.concat(lines, "\n")
 
   -- Skip if empty
@@ -512,6 +520,26 @@ function M.extract_buffer_context(bufnr, filepath, filetype, ctx_config)
     symbols = symbols,
     snippet = snippet,
   }
+end
+
+--- Clear symbol cache for a specific buffer.
+---@param bufnr number Buffer number
+function M.clear_symbol_cache(bufnr)
+  if symbol_cache.bufnr == bufnr then
+    symbol_cache.bufnr = nil
+    symbol_cache.symbols = {}
+    symbol_cache.timestamp = 0
+  end
+end
+
+--- Setup autocmds for cache cleanup.
+function M.setup()
+  vim.api.nvim_create_autocmd("BufDelete", {
+    group = vim.api.nvim_create_augroup("HaikuContextCleanup", { clear = true }),
+    callback = function(args)
+      M.clear_symbol_cache(args.buf)
+    end,
+  })
 end
 
 return M

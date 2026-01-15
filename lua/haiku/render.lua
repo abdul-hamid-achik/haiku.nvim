@@ -164,9 +164,10 @@ function M.show_edit(completion, bufnr, row, col)
   end
 
   -- Calculate window size and position
+  -- Use strdisplaywidth for correct width with multi-byte/wide characters
   local win_width = 0
   for _, line in ipairs(buf_lines) do
-    win_width = math.max(win_width, #line)
+    win_width = math.max(win_width, vim.fn.strdisplaywidth(line))
   end
   win_width = math.min(win_width + 2, vim.o.columns - 10)
   local win_height = math.min(#lines, config.display.max_lines)

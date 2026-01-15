@@ -4,6 +4,7 @@
 local M = {}
 
 local render = require("haiku.render")
+local core = require("haiku.core")
 
 --- Accept the full completion.
 ---@return boolean success Whether a completion was accepted
@@ -195,29 +196,7 @@ function M.insert_text(text)
   end
 end
 
---- Find exact multi-line match in buffer lines.
----@param lines table Buffer lines (1-indexed conceptually, but table is 0-indexed)
----@param delete_lines table Lines to find
----@param start_search number Start row (1-indexed)
----@param end_search number End row (1-indexed)
----@return number|nil match_row 1-indexed row where match starts, or nil
-local function find_exact_match(lines, delete_lines, start_search, end_search)
-  for i = start_search, end_search do
-    -- Check if all delete lines match starting at this position
-    local all_match = true
-    for j, delete_line in ipairs(delete_lines) do
-      local buffer_line = lines[i + j - 1]
-      if buffer_line == nil or buffer_line ~= delete_line then
-        all_match = false
-        break
-      end
-    end
-    if all_match then
-      return i
-    end
-  end
-  return nil
-end
+-- find_exact_match is now in core.lua for testability
 
 --- Apply an edit (delete + insert).
 ---@param completion table { delete = string, insert = string }
@@ -240,45 +219,18 @@ function M.apply_edit(completion)
     local end_search = math.min(total_lines - #delete_lines + 1, row + search_radius)
 
     -- Try exact multi-line match first
-    local match_row = find_exact_match(lines, delete_lines, start_search, end_search)
+    local match_row = core.find_exact_match(lines, delete_lines, start_search, end_search)
 
     if match_row then
       -- Found exact match, delete the lines
       vim.api.nvim_buf_set_lines(bufnr, match_row - 1, match_row - 1 + #delete_lines, false, {})
     else
-      -- Fallback: fuzzy match on trimmed first line (for indentation differences)
-      local first_line_trimmed = delete_lines[1]:match("^%s*(.-)%s*$")
-      local found = false
+      -- Fallback: fuzzy match (whitespace-tolerant)
+      local fuzzy_match_row = core.find_fuzzy_match(lines, delete_lines, start_search, end_search)
 
-      for i = start_search, end_search do
-        local line_trimmed = (lines[i] or ""):match("^%s*(.-)%s*$")
-        if line_trimmed == first_line_trimmed then
-          if #delete_lines == 1 then
-            -- Single line with whitespace tolerance
-            vim.api.nvim_buf_set_lines(bufnr, i - 1, i, false, {})
-            found = true
-            break
-          else
-            -- Multi-line: check if rest matches with whitespace tolerance
-            local all_match = true
-            for j = 2, #delete_lines do
-              local buf_trimmed = (lines[i + j - 1] or ""):match("^%s*(.-)%s*$")
-              local del_trimmed = delete_lines[j]:match("^%s*(.-)%s*$")
-              if buf_trimmed ~= del_trimmed then
-                all_match = false
-                break
-              end
-            end
-            if all_match then
-              vim.api.nvim_buf_set_lines(bufnr, i - 1, i - 1 + #delete_lines, false, {})
-              found = true
-              break
-            end
-          end
-        end
-      end
-
-      if not found then
+      if fuzzy_match_row then
+        vim.api.nvim_buf_set_lines(bufnr, fuzzy_match_row - 1, fuzzy_match_row - 1 + #delete_lines, false, {})
+      else
         util.log("Edit mode: Could not find exact match for deletion, skipping delete", vim.log.levels.WARN)
       end
     end
